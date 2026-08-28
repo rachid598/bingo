@@ -188,7 +188,6 @@ h1, h2 { margin: 0; line-height: 1.2; }
   color: color-mix(in srgb, var(--ink) 70%, var(--checked));
 }
 .cell[data-checked="true"] .cell__text { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .78; }
-.cell[data-checked="true"]:not([data-free="true"]) { cursor: default; }
 
 .cell[data-winning="true"] {
   animation: pop .5s ease;
@@ -196,7 +195,7 @@ h1, h2 { margin: 0; line-height: 1.2; }
 }
 @keyframes pop { 0%, 100% { transform: none; } 40% { transform: scale(1.06); } }
 
-.cell[data-free="true"] { background: var(--accent-soft); border-style: dashed; border-color: var(--accent); color: var(--accent); }
+.cell[data-free="true"] { background: var(--accent-soft); border-style: dashed; border-color: var(--accent); color: var(--accent); cursor: default; }
 .cell[data-free="true"] .cell__text { text-decoration: none; opacity: 1; font-weight: 600; }
 
 .grid[data-editing="true"] .cell { border-style: dashed; border-color: var(--accent); cursor: text; }

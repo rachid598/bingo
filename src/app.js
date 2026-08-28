@@ -181,7 +181,7 @@ function renderStatus() {
   } else if (state.editing) {
     $("hint").textContent = "Mode modification : touche une case pour réécrire son texte — le changement peut apparaître ailleurs sur la grille des collègues, chacun a son propre mélange.";
   } else {
-    $("hint").textContent = "Touche une case dès que ça arrive pour la cocher sur TA grille. Regarde « Qui avance ? » pour suivre les collègues.";
+    $("hint").textContent = "Touche une case pour la cocher sur TA grille (re-touche pour décocher). Regarde « Qui avance ? » pour suivre les collègues.";
   }
 }
 
@@ -234,7 +234,7 @@ function renderGrid() {
     button.setAttribute("aria-pressed", String(checked));
     button.setAttribute(
       "aria-label",
-      isFree ? `${text} — offerte` : checked ? `${text} — cochée, verrouillée` : text
+      isFree ? `${text} — offerte` : checked ? `${text} — cochée, touche à nouveau pour décocher` : text
     );
   });
 
@@ -427,8 +427,11 @@ function onCellActivate(index) {
   const mine = myChecks();
   const text = currentLayout()[canonical] || "";
 
+  // C'est ta grille : tu coches, et tu peux décocher toi-même si tu t'es
+  // trompé. Personne d'autre ne peut toucher tes cases de toute façon.
   if (mine[canonical]) {
-    banner("Déjà cochée sur ta grille 🔒", "info");
+    conn.setCell(state.user.id, canonical, null);
+    conn.pushEvent({ type: "uncheck", name: state.user.name, color: state.user.color, text });
     return;
   }
 

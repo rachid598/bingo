@@ -14,7 +14,7 @@ confettis quand quelqu'un fait une ligne.
 
 - **86 phrases** prêtes à l'emploi, tirées au sort à chaque nouvelle grille
 - **Un vrai loto** : tout le monde a le même fond de phrases, mais chacun les voit rangées différemment sur sa grille — comme des cartons de loto
-- **Chacun coche sa propre grille**, à son propre rythme : personne ne peut cocher à la place d'un collègue, ni décocher ce qu'il a déjà coché. Le but reste de faire une ligne sur SA grille, pas d'être le premier à cliquer
+- **Chacun coche sa propre grille**, à son propre rythme, et peut se corriger en re-touchant une case : personne ne peut cocher ou décocher celle d'un collègue. Le but reste de faire une ligne sur SA grille, pas d'être le premier à cliquer
 - **« Qui avance ? »** : un tableau en direct montre la progression de chaque collègue connecté — qui s'approche du bingo, qui l'a déjà fait
 - **Synchronisation temps réel** entre tous les téléphones et ordinateurs connectés
 - **Journal en direct** de ce qui vient de se passer
