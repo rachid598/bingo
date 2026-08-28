@@ -113,24 +113,33 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
       function armPresence(user) {
         const myRef = child(roomRef, `presence/${user.id}`);
         onDisconnect(myRef).remove();
-        set(myRef, { name: user.name, color: user.color, ts: serverTimestamp() });
+        reported(set(myRef, { name: user.name, color: user.color, ts: serverTimestamp() }), "Présence");
       }
 
       function describe(error) {
-        if (error?.code === "PERMISSION_DENIED") {
-          return "Accès refusé par les règles de sécurité de la base. Vérifie qu'elles sont bien publiées dans Firebase → Realtime Database → Règles.";
+        const code = error?.code || "";
+        const message = error?.message || String(error);
+        if (code === "PERMISSION_DENIED" || /permission[_ ]denied/i.test(message)) {
+          return "accès refusé par les règles de sécurité de la base — vérifie qu'elles sont bien publiées dans Firebase → Realtime Database → Règles.";
         }
-        return error?.message || String(error);
+        return code ? `${code} — ${message}` : message;
       }
 
       // Une écriture refusée par les règles de sécurité échouait jusqu'ici en
       // silence (aucun catch côté app.js) : le clic n'avait l'air de rien
-      // faire, sans explication. On remonte l'erreur dans la pastille de
-      // statut pour que ce soit visible au lieu d'invisible.
-      function reported(promise) {
-        return promise.catch((error) => {
-          handlers.onStatus?.({ state: "error", message: describe(error) });
-        });
+      // faire, sans explication. On remonte l'erreur — avec l'action qui a
+      // échoué — dans la pastille de statut, et on efface une éventuelle
+      // erreur précédente dès qu'une écriture repasse avec succès.
+      function reported(promise, label) {
+        return promise.then(
+          (value) => {
+            handlers.onStatus?.({ state: "online" });
+            return value;
+          },
+          (error) => {
+            handlers.onStatus?.({ state: "error", message: `${label} : ${describe(error)}` });
+          }
+        );
       }
 
       return {
@@ -141,14 +150,25 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
         async ensureRoom(defaults) {
           await reported(
             runTransaction(roomRef, (current) => {
-              if (current && current.layout) return current;
+              if (current && current.layout) {
+                // Nettoie un éventuel champ « cells » hérité de l'ancien
+                // modèle (avant les cases cochées par joueur) : les règles
+                // actuelles ne le connaissent plus et rejetteraient toute
+                // écriture qui le laisserait traîner tel quel.
+                if (Object.prototype.hasOwnProperty.call(current, "cells")) {
+                  const { cells, ...clean } = current;
+                  return clean;
+                }
+                return current;
+              }
               return {
                 meta: defaults.meta,
                 layout: defaults.layout,
                 checks: current?.checks || null,
                 presence: current?.presence || null,
               };
-            })
+            }),
+            "Ouverture de la salle"
           );
         },
 
@@ -157,20 +177,23 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
         // (une transaction ne l'écrase pas si tu la recliques par erreur).
         setCell(playerId, index, marker) {
           const cellRef = child(roomRef, `checks/${playerId}/${index}`);
-          if (!marker) return reported(remove(cellRef));
-          return reported(runTransaction(cellRef, (current) => (current == null ? marker : current)));
+          if (!marker) return reported(remove(cellRef), "Décocher une case");
+          return reported(
+            runTransaction(cellRef, (current) => (current == null ? marker : current)),
+            "Cocher une case"
+          );
         },
 
         setCellText(index, text) {
-          return reported(update(child(roomRef, "layout"), { [index]: text }));
+          return reported(update(child(roomRef, "layout"), { [index]: text }), "Modifier une case");
         },
 
         newGame({ meta, layout }) {
-          return reported(update(roomRef, { meta, layout, checks: null, events: null }));
+          return reported(update(roomRef, { meta, layout, checks: null, events: null }), "Nouvelle grille");
         },
 
         resetCells() {
-          return reported(set(child(roomRef, "checks"), null));
+          return reported(set(child(roomRef, "checks"), null), "Tout décocher");
         },
 
         setPresence(user) {
@@ -179,7 +202,7 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
         },
 
         pushEvent(event) {
-          return push(child(roomRef, "events"), { ...event, at: serverTimestamp() });
+          return reported(push(child(roomRef, "events"), { ...event, at: serverTimestamp() }), "Journal");
         },
 
         leave() {
