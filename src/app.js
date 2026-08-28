@@ -91,10 +91,7 @@ function shareUrl() {
 function freshRoom({ size = currentSize(), freeCell = state.room?.meta?.freeCell ?? DEFAULTS.freeCell } = {}) {
   const seed = randomSeed();
   const layout = buildLayout({ size, seed, freeCell });
-  const cells = {};
-  const free = freeCell ? centerIndex(size) : -1;
-  if (free >= 0) cells[free] = { name: "", color: "#1f6feb", free: true, at: Date.now() };
-  return { meta: { size, seed, freeCell, createdAt: Date.now() }, layout, cells };
+  return { meta: { size, seed, freeCell, createdAt: Date.now() }, layout };
 }
 
 function currentSize() {
@@ -105,8 +102,27 @@ function currentLayout() {
   return state.room?.layout || [];
 }
 
-function currentCells() {
-  return state.room?.cells || {};
+// La case offerte n'est jamais stockée : c'est une constante de la grille
+// (toujours au centre), pas un événement qui arrive pendant la réunion.
+function freeCanonicalIndex() {
+  return state.room?.meta?.freeCell ? centerIndex(currentSize()) : -1;
+}
+
+// Ce que CE participant a coché sur SA grille — jamais celle d'un collègue.
+function myChecks() {
+  return state.room?.checks?.[state.user.id] || {};
+}
+
+function isCheckedFor(perm, checks, free) {
+  return (visualIndex) => {
+    const canonical = perm[visualIndex];
+    return canonical === free || Boolean(checks[canonical]);
+  };
+}
+
+function uniquePeople() {
+  const others = state.presence.filter((p) => p.id !== state.user.id);
+  return [{ ...state.user }, ...others];
 }
 
 // La disposition visuelle de CE participant : mêmes phrases pour tout le
@@ -134,6 +150,7 @@ function render() {
   renderGrid();
   renderProgress();
   renderFeed();
+  renderStandings();
 }
 
 function renderIdentity() {
@@ -164,18 +181,17 @@ function renderStatus() {
   } else if (state.editing) {
     $("hint").textContent = "Mode modification : touche une case pour réécrire son texte — le changement peut apparaître ailleurs sur la grille des collègues, chacun a son propre mélange.";
   } else {
-    $("hint").textContent = "Touche une case dès que ça arrive : elle se coche chez tout le monde et se verrouille.";
+    $("hint").textContent = "Touche une case dès que ça arrive pour la cocher sur TA grille. Regarde « Qui avance ? » pour suivre les collègues.";
   }
 }
 
 function renderPresence() {
   const list = $("presence");
-  const others = state.presence.filter((p) => p.id !== state.user.id);
-  const shown = [{ ...state.user }, ...others].slice(0, 6);
+  const shown = uniquePeople().slice(0, 6);
   list.innerHTML = shown
     .map((p) => `<li style="background:${p.color || "#888"}" title="${escapeHtml(p.name || "…")}">${escapeHtml(initials(p.name))}</li>`)
     .join("");
-  const extra = others.length + 1 - shown.length;
+  const extra = uniquePeople().length - shown.length;
   if (extra > 0) list.insertAdjacentHTML("beforeend", `<li style="background:var(--ink-faint)">+${extra}</li>`);
 }
 
@@ -201,32 +217,25 @@ function renderGrid() {
     );
   }
 
-  const cells = currentCells();
   const perm = permutation();
-  const bingo = findBingos(size, (i) => Boolean(cells[perm[i]]));
+  const free = freeCanonicalIndex();
+  const mine = myChecks();
+  const bingo = findBingos(size, isCheckedFor(perm, mine, free));
 
   [...gridEl.children].forEach((button, index) => {
     const canonical = perm[index];
-    const marker = cells[canonical];
+    const isFree = canonical === free;
+    const checked = isFree || Boolean(mine[canonical]);
     const text = layout[canonical] ?? "";
     button.querySelector(".cell__text").textContent = text;
-    button.dataset.checked = String(Boolean(marker));
-    button.dataset.free = String(Boolean(marker?.free));
+    button.dataset.checked = String(checked);
+    button.dataset.free = String(isFree);
     button.dataset.winning = String(bingo.cells.has(index));
-    button.setAttribute("aria-pressed", String(Boolean(marker)));
+    button.setAttribute("aria-pressed", String(checked));
     button.setAttribute(
       "aria-label",
-      marker?.free ? `${text} — offerte` : marker ? `${text} — cochée par ${marker.name || "quelqu'un"}, verrouillée` : text
+      isFree ? `${text} — offerte` : checked ? `${text} — cochée, verrouillée` : text
     );
-
-    const badge = button.querySelector(".cell__by");
-    if (marker && !marker.free && marker.name) {
-      const html = `<span class="cell__by" style="background:${marker.color || "#666"}">${escapeHtml(initials(marker.name))}</span>`;
-      if (badge) badge.outerHTML = html;
-      else button.insertAdjacentHTML("beforeend", html);
-    } else if (badge) {
-      badge.remove();
-    }
   });
 
   announce(bingo);
@@ -235,10 +244,45 @@ function renderGrid() {
 function renderProgress() {
   const size = currentSize();
   const total = size * size;
-  const done = Object.keys(currentCells()).length;
+  const done = Object.keys(myChecks()).length + (freeCanonicalIndex() >= 0 ? 1 : 0);
   $("progress-fill").style.width = `${total ? (done / total) * 100 : 0}%`;
   $("progress-text").textContent = `${done} / ${total}`;
   $("progress-label").setAttribute("aria-label", `${done} cases cochées sur ${total}`);
+}
+
+// Le tableau « qui avance ? » : la progression de chaque collègue connecté,
+// recalculée à partir de SA propre disposition (déterministe, donc pas besoin
+// que son navigateur nous l'envoie) et de ses propres cases cochées.
+function renderStandings() {
+  const el = $("standings");
+  if (!el) return;
+  const meta = state.room?.meta;
+  if (!meta) { el.innerHTML = ""; return; }
+
+  const size = meta.size;
+  const free = meta.freeCell ? centerIndex(size) : -1;
+  const checks = state.room.checks || {};
+
+  const rows = uniquePeople().map((p) => {
+    const perm = personalPermutation(size, meta.freeCell, meta.seed, p.id);
+    const bingo = findBingos(size, isCheckedFor(perm, checks[p.id] || {}, free));
+    return { ...p, checked: bingo.checked, total: bingo.total, lines: bingo.lines.length, fullHouse: bingo.fullHouse };
+  });
+  rows.sort((a, b) => b.checked - a.checked || b.lines - a.lines);
+
+  el.innerHTML = rows.map((r) => {
+    const pct = r.total ? Math.round((r.checked / r.total) * 100) : 0;
+    const count = r.fullHouse ? "🏆 carton plein" : r.lines ? `🎉 ${r.lines} ligne${r.lines > 1 ? "s" : ""}` : `${r.checked}/${r.total}`;
+    return `
+      <li>
+        <div class="standing__head">
+          <span class="standing__dot" style="background:${r.color || "#888"}"></span>
+          <span class="standing__name">${escapeHtml(r.name || "…")}${r.id === state.user.id ? " (toi)" : ""}</span>
+          <span class="standing__count">${count}</span>
+        </div>
+        <div class="standing__bar"><span style="width:${pct}%;background:${r.color || "#888"}"></span></div>
+      </li>`;
+  }).join("");
 }
 
 function renderFeed() {
@@ -373,30 +417,29 @@ function onCellActivate(index) {
 
   const perm = permutation();
   const canonical = perm[index];
-  const cells = currentCells();
-  const marker = cells[canonical];
-  const text = currentLayout()[canonical] || "";
+  const free = freeCanonicalIndex();
 
-  if (marker?.free) {
+  if (canonical === free) {
     banner("Celle-là est offerte 🎁", "info");
     return;
   }
 
-  if (marker) {
-    banner(`Déjà cochée par ${marker.name || "quelqu'un"} 🔒`, "info");
+  const mine = myChecks();
+  const text = currentLayout()[canonical] || "";
+
+  if (mine[canonical]) {
+    banner("Déjà cochée sur ta grille 🔒", "info");
     return;
   }
 
-  const mine = { name: state.user.name, color: state.user.color, uid: state.user.id, at: Date.now() };
-  conn.setCell(canonical, mine);
+  conn.setCell(state.user.id, canonical, { at: Date.now() });
   conn.pushEvent({ type: "check", name: state.user.name, color: state.user.color, text });
 
-  // Un seul client doit annoncer le bingo dans le journal : celui qui vient de
-  // poser la case décisive. On simule donc l'état résultant de notre clic, sur
-  // SA grille visuelle — chacun peut compléter une ligne à un moment différent.
+  // Cette case fait-elle une ligne sur TA grille ? Chacun a sa propre
+  // disposition, donc chacun peut compléter une ligne à un moment différent.
   const size = currentSize();
-  const before = findBingos(size, (i) => Boolean(cells[perm[i]]));
-  const after = findBingos(size, (i) => i === index || Boolean(cells[perm[i]]));
+  const before = findBingos(size, isCheckedFor(perm, mine, free));
+  const after = findBingos(size, (i) => i === index || isCheckedFor(perm, mine, free)(i));
   if (after.lines.length > before.lines.length) {
     conn.pushEvent({ type: "bingo", name: state.user.name, color: state.user.color });
   }
@@ -431,7 +474,7 @@ async function boot() {
         render();
         state.primed = true;
       },
-      onPresence(list) { state.presence = list; renderPresence(); },
+      onPresence(list) { state.presence = list; renderPresence(); renderStandings(); },
       onEvent(list) { state.events = list; renderFeed(); },
       onStatus(status) { state.status = status; renderStatus(); },
     });
@@ -503,12 +546,8 @@ function wireUi() {
   });
 
   $("clear").addEventListener("click", () => {
-    if (!confirm("Décocher toutes les cases pour tout le monde ?")) return;
-    const size = currentSize();
-    const free = state.room?.meta?.freeCell ? centerIndex(size) : -1;
-    const kept = {};
-    if (free >= 0) kept[free] = { name: "", color: "#1f6feb", free: true, at: Date.now() };
-    conn.resetCells(kept);
+    if (!confirm("Décocher toutes les grilles, y compris celles des collègues ?")) return;
+    conn.resetCells();
     conn.pushEvent({ type: "clear", name: state.user.name, color: state.user.color });
     state.celebrated.clear();
     state.fullHouse = false;

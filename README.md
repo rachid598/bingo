@@ -3,18 +3,20 @@
 Un bingo collaboratif pour survivre à la réunion de pré-rentrée, avec les collègues.
 
 Une grille de phrases (« Le vidéoprojecteur refuse de s'allumer », « On cherche
-un volontaire… silence total »). Dès que ça arrive pour de vrai, on touche la
-case : **elle se coche instantanément sur l'écran de tout le monde**. Quand une
-ligne est complète, tout le monde voit les confettis en même temps.
+un volontaire… silence total »). Dès que ça arrive pour de vrai, chacun touche
+sa propre case pour la cocher sur SA grille — exactement comme un vrai carton
+de loto. On voit en direct l'avancée des collègues, et tout le monde voit les
+confettis quand quelqu'un fait une ligne.
 
 <!-- Capture : ajoute ici une image de la grille si tu en veux une dans le README -->
 
 ## Ce qu'il y a dedans
 
 - **86 phrases** prêtes à l'emploi, tirées au sort à chaque nouvelle grille
-- **Un vrai loto** : tout le monde a le même fond de phrases, mais chacun les voit rangées différemment sur sa grille — comme des cartons de loto. Cocher une phrase la coche partout, mais compléter une ligne reste personnel : chacun peut faire bingo à un moment différent
+- **Un vrai loto** : tout le monde a le même fond de phrases, mais chacun les voit rangées différemment sur sa grille — comme des cartons de loto
+- **Chacun coche sa propre grille**, à son propre rythme : personne ne peut cocher à la place d'un collègue, ni décocher ce qu'il a déjà coché. Le but reste de faire une ligne sur SA grille, pas d'être le premier à cliquer
+- **« Qui avance ? »** : un tableau en direct montre la progression de chaque collègue connecté — qui s'approche du bingo, qui l'a déjà fait
 - **Synchronisation temps réel** entre tous les téléphones et ordinateurs connectés
-- **Qui a coché quoi** : chaque case cochée porte les initiales et la couleur de son auteur, et se verrouille — personne ne peut la décocher ou piquer le crédit d'un collègue
 - **Journal en direct** de ce qui vient de se passer
 - **Cases modifiables** : écris vos propres phrases maison, elles se propagent à tout le monde
 - **Salles séparées** : `?salle=college-jean-moulin` — chaque établissement sa grille
@@ -160,15 +162,23 @@ Le SDK Firebase est chargé à la demande depuis le CDN Google : pas de
 
 ```
 rooms/<salle>/
-  meta      { size, seed, freeCell, createdAt }
-  layout    [ "phrase 0", "phrase 1", … ]     ← le texte des cases
-  cells     { "7": { name, color, uid, at } } ← les cases cochées
-  presence  { <client>: { name, color, ts } } ← qui est là (nettoyé à la déconnexion)
+  meta      { size, seed, freeCell, createdAt }   ← le fond de phrases, partagé
+  layout    [ "phrase 0", "phrase 1", … ]         ← le texte des cases, partagé
+  checks    { <client>: { "7": { at } } }         ← les cases cochées, PAR PERSONNE
+  presence  { <client>: { name, color, ts } }     ← qui est là (nettoyé à la déconnexion)
   events    { <clé>: { type, name, text, at } }
 ```
 
-La grille est créée par transaction : si deux personnes ouvrent la salle en même
-temps, une seule grille est tirée et tout le monde voit la même.
+La grille (`meta` + `layout`) est créée par transaction : si deux personnes
+ouvrent la salle en même temps, une seule est tirée et tout le monde a le même
+fond de phrases.
+
+Chaque participant ne voit ni ne modifie jamais que sa propre entrée sous
+`checks/<son identifiant>` : c'est ce qui rend chaque grille indépendante.
+L'ordre d'affichage (quelle case du fond commun tombe à quelle position
+visuelle) n'est stocké nulle part — il est recalculé à la volée à partir de la
+graine de la partie et de l'identifiant du navigateur, ce qui permet aussi de
+calculer la progression d'un collègue sans jamais recevoir sa disposition.
 
 ## Sources
 

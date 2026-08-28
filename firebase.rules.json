@@ -20,12 +20,9 @@
           "$case": { ".validate": "newData.isString() && newData.val().length <= 140" }
         },
 
-        "cells": {
-          "$case": {
-            ".validate": "newData.hasChild('name')",
-            "name":   { ".validate": "newData.isString() && newData.val().length <= 24" },
-            "color":  { ".validate": "newData.isString() && newData.val().length <= 9" },
-            "$autre": { ".validate": true }
+        "checks": {
+          "$player": {
+            "$case": { ".validate": true }
           }
         },
 

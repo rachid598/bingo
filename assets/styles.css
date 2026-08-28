@@ -190,13 +190,6 @@ h1, h2 { margin: 0; line-height: 1.2; }
 .cell[data-checked="true"] .cell__text { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .78; }
 .cell[data-checked="true"]:not([data-free="true"]) { cursor: default; }
 
-.cell__by {
-  position: absolute; inset-inline-end: 3px; inset-block-end: 3px;
-  min-width: 15px; height: 15px; padding: 0 3px; border-radius: 999px;
-  display: grid; place-items: center;
-  font-size: 8.5px; font-weight: 700; color: #fff; line-height: 1;
-}
-
 .cell[data-winning="true"] {
   animation: pop .5s ease;
   box-shadow: inset 0 0 0 2px var(--checked);
@@ -227,6 +220,14 @@ h1, h2 { margin: 0; line-height: 1.2; }
 .feed__who { font-weight: 700; color: var(--ink); flex: none; }
 .feed__what { min-width: 0; overflow-wrap: anywhere; }
 .feed__empty { color: var(--ink-faint); font-style: italic; }
+
+.standings { margin: 0; padding: 0; list-style: none; display: grid; gap: 13px; max-height: 30vh; overflow-y: auto; }
+.standing__head { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.standing__dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.standing__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .85rem; font-weight: 600; color: var(--ink); }
+.standing__count { font-size: .76rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.standing__bar { height: 6px; border-radius: 999px; background: var(--bg-sunken); overflow: hidden; }
+.standing__bar span { display: block; height: 100%; border-radius: 999px; transition: width .3s ease; }
 
 /* -------------------------------------------------------------- bannière */
 .banner {

@@ -82,17 +82,20 @@ export function createLocalBackend() {
           commit((r) => {
             r.meta = defaults.meta;
             r.layout = defaults.layout;
-            r.cells = defaults.cells || {};
+            r.checks = r.checks || {};
             r.presence = r.presence || {};
             r.events = [];
           });
         },
 
-        setCell(index, marker) {
+        // Chacun coche sa propre grille : la case se pose dans checks[toi],
+        // jamais dans celle d'un collègue.
+        setCell(playerId, index, marker) {
           commit((r) => {
-            r.cells = r.cells || {};
-            if (marker) { if (!r.cells[index]) r.cells[index] = marker; }
-            else delete r.cells[index];
+            r.checks = r.checks || {};
+            r.checks[playerId] = r.checks[playerId] || {};
+            if (marker) { if (!r.checks[playerId][index]) r.checks[playerId][index] = marker; }
+            else delete r.checks[playerId][index];
           });
         },
 
@@ -103,18 +106,18 @@ export function createLocalBackend() {
           });
         },
 
-        newGame({ meta, layout, cells }) {
+        newGame({ meta, layout }) {
           commit((r) => {
             r.meta = meta;
             r.layout = layout;
-            r.cells = cells || {};
+            r.checks = {};
             r.events = [];
           });
         },
 
-        resetCells(cells) {
+        resetCells() {
           commit((r) => {
-            r.cells = cells || {};
+            r.checks = {};
           });
         },
 

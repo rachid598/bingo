@@ -74,7 +74,7 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
             handlers.onRoom?.({
               meta: raw.meta || {},
               layout: toArray(raw.layout, size * size),
-              cells: raw.cells || {},
+              checks: raw.checks || {},
             });
           },
           (error) => handlers.onStatus?.({ state: "error", message: describe(error) })
@@ -134,17 +134,17 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
             return {
               meta: defaults.meta,
               layout: defaults.layout,
-              cells: defaults.cells || {},
+              checks: current?.checks || null,
               presence: current?.presence || null,
             };
           });
         },
 
-        // Une case cochée reste cochée : la transaction ne pose la marque que
-        // si la case est encore vide, pour que deux clics simultanés ne
-        // fassent pas perdre le crédit à qui a cliqué en premier.
-        setCell(index, marker) {
-          const cellRef = child(roomRef, `cells/${index}`);
+        // Chacun coche sa propre grille : la case se pose dans checks/<toi>,
+        // jamais dans celle d'un collègue. Une fois posée elle reste posée
+        // (une transaction ne l'écrase pas si tu la recliques par erreur).
+        setCell(playerId, index, marker) {
+          const cellRef = child(roomRef, `checks/${playerId}/${index}`);
           if (!marker) return remove(cellRef);
           return runTransaction(cellRef, (current) => (current == null ? marker : current));
         },
@@ -153,12 +153,12 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
           return update(child(roomRef, "layout"), { [index]: text });
         },
 
-        newGame({ meta, layout, cells }) {
-          return update(roomRef, { meta, layout, cells: cells || null, events: null });
+        newGame({ meta, layout }) {
+          return update(roomRef, { meta, layout, checks: null, events: null });
         },
 
-        resetCells(cells) {
-          return set(child(roomRef, "cells"), cells || null);
+        resetCells() {
+          return set(child(roomRef, "checks"), null);
         },
 
         setPresence(user) {
