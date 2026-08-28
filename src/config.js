@@ -15,11 +15,13 @@
 // ---------------------------------------------------------------------------
 
 export const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  appId: "",
+  apiKey: "AIzaSyBgITY-i_R-0atUirlVQQAq6sqa8QnO2hQ",
+  authDomain: "bingo-9ebfd.firebaseapp.com",
+  databaseURL: "https://bingo-9ebfd-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "bingo-9ebfd",
+  storageBucket: "bingo-9ebfd.firebasestorage.app",
+  messagingSenderId: "287254616906",
+  appId: "1:287254616906:web:b3124cf67f4d50b12fffb3",
 };
 
 // Se connecter en « anonyme » avant d'écrire. Recommandé : les règles de
