@@ -150,7 +150,7 @@ function renderStatus() {
   } else if (state.editing) {
     $("hint").textContent = "Mode modification : touche une case pour réécrire son texte.";
   } else {
-    $("hint").textContent = "Touche une case dès que ça arrive pour la cocher chez tout le monde.";
+    $("hint").textContent = "Touche une case dès que ça arrive : elle se coche chez tout le monde et se verrouille.";
   }
 }
 
@@ -200,7 +200,7 @@ function renderGrid() {
     button.setAttribute("aria-pressed", String(Boolean(marker)));
     button.setAttribute(
       "aria-label",
-      marker?.free ? `${text} — offerte` : marker ? `${text} — cochée par ${marker.name || "quelqu'un"}` : text
+      marker?.free ? `${text} — offerte` : marker ? `${text} — cochée par ${marker.name || "quelqu'un"}, verrouillée` : text
     );
 
     const badge = button.querySelector(".cell__by");
@@ -365,8 +365,7 @@ function onCellActivate(index) {
   }
 
   if (marker) {
-    conn.setCell(index, null);
-    conn.pushEvent({ type: "uncheck", name: state.user.name, color: state.user.color, text });
+    banner(`Déjà cochée par ${marker.name || "quelqu'un"} 🔒`, "info");
     return;
   }
 

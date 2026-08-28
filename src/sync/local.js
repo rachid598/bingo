@@ -91,7 +91,7 @@ export function createLocalBackend() {
         setCell(index, marker) {
           commit((r) => {
             r.cells = r.cells || {};
-            if (marker) r.cells[index] = marker;
+            if (marker) { if (!r.cells[index]) r.cells[index] = marker; }
             else delete r.cells[index];
           });
         },

@@ -13,7 +13,7 @@ ligne est complète, tout le monde voit les confettis en même temps.
 
 - **86 phrases** prêtes à l'emploi, tirées au sort à chaque nouvelle grille
 - **Synchronisation temps réel** entre tous les téléphones et ordinateurs connectés
-- **Qui a coché quoi** : chaque case cochée porte les initiales et la couleur de son auteur
+- **Qui a coché quoi** : chaque case cochée porte les initiales et la couleur de son auteur, et se verrouille — personne ne peut la décocher ou piquer le crédit d'un collègue
 - **Journal en direct** de ce qui vient de se passer
 - **Cases modifiables** : écris vos propres phrases maison, elles se propagent à tout le monde
 - **Salles séparées** : `?salle=college-jean-moulin` — chaque établissement sa grille

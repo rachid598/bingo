@@ -140,9 +140,13 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
           });
         },
 
+        // Une case cochée reste cochée : la transaction ne pose la marque que
+        // si la case est encore vide, pour que deux clics simultanés ne
+        // fassent pas perdre le crédit à qui a cliqué en premier.
         setCell(index, marker) {
           const cellRef = child(roomRef, `cells/${index}`);
-          return marker ? set(cellRef, marker) : remove(cellRef);
+          if (!marker) return remove(cellRef);
+          return runTransaction(cellRef, (current) => (current == null ? marker : current));
         },
 
         setCellText(index, text) {

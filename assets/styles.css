@@ -210,6 +210,7 @@ h1, h2 { margin: 0; line-height: 1.2; }
   color: color-mix(in srgb, var(--ink) 70%, var(--checked));
 }
 .cell[data-checked="true"] .cell__text { text-decoration: line-through; text-decoration-thickness: 1px; opacity: .78; }
+.cell[data-checked="true"]:not([data-free="true"]) { cursor: default; }
 
 .cell__by {
   position: absolute; inset-inline-end: 3px; inset-block-end: 3px;
