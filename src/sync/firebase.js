@@ -118,9 +118,19 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
 
       function describe(error) {
         if (error?.code === "PERMISSION_DENIED") {
-          return "Accès refusé par les règles de sécurité de la base. Vérifie firebase.rules.json.";
+          return "Accès refusé par les règles de sécurité de la base. Vérifie qu'elles sont bien publiées dans Firebase → Realtime Database → Règles.";
         }
         return error?.message || String(error);
+      }
+
+      // Une écriture refusée par les règles de sécurité échouait jusqu'ici en
+      // silence (aucun catch côté app.js) : le clic n'avait l'air de rien
+      // faire, sans explication. On remonte l'erreur dans la pastille de
+      // statut pour que ce soit visible au lieu d'invisible.
+      function reported(promise) {
+        return promise.catch((error) => {
+          handlers.onStatus?.({ state: "error", message: describe(error) });
+        });
       }
 
       return {
@@ -129,15 +139,17 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
         // Transaction : si deux personnes ouvrent la salle en même temps,
         // une seule grille est créée et tout le monde voit la même.
         async ensureRoom(defaults) {
-          await runTransaction(roomRef, (current) => {
-            if (current && current.layout) return current;
-            return {
-              meta: defaults.meta,
-              layout: defaults.layout,
-              checks: current?.checks || null,
-              presence: current?.presence || null,
-            };
-          });
+          await reported(
+            runTransaction(roomRef, (current) => {
+              if (current && current.layout) return current;
+              return {
+                meta: defaults.meta,
+                layout: defaults.layout,
+                checks: current?.checks || null,
+                presence: current?.presence || null,
+              };
+            })
+          );
         },
 
         // Chacun coche sa propre grille : la case se pose dans checks/<toi>,
@@ -145,20 +157,20 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
         // (une transaction ne l'écrase pas si tu la recliques par erreur).
         setCell(playerId, index, marker) {
           const cellRef = child(roomRef, `checks/${playerId}/${index}`);
-          if (!marker) return remove(cellRef);
-          return runTransaction(cellRef, (current) => (current == null ? marker : current));
+          if (!marker) return reported(remove(cellRef));
+          return reported(runTransaction(cellRef, (current) => (current == null ? marker : current)));
         },
 
         setCellText(index, text) {
-          return update(child(roomRef, "layout"), { [index]: text });
+          return reported(update(child(roomRef, "layout"), { [index]: text }));
         },
 
         newGame({ meta, layout }) {
-          return update(roomRef, { meta, layout, checks: null, events: null });
+          return reported(update(roomRef, { meta, layout, checks: null, events: null }));
         },
 
         resetCells() {
-          return set(child(roomRef, "checks"), null);
+          return reported(set(child(roomRef, "checks"), null));
         },
 
         setPresence(user) {
