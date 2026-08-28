@@ -1,4 +1,4 @@
-import { DEFAULTS } from "./config.js";
+import { DEFAULTS, ADMIN_NAME } from "./config.js";
 import { buildLayout, findBingos, centerIndex, randomSeed, personalPermutation } from "./grid.js";
 import { PHRASES, FREE_CELL_TEXT } from "./phrases.js";
 import {
@@ -58,6 +58,13 @@ function initials(name) {
   const words = String(name).trim().split(/[\s-]+/).filter(Boolean);
   if (!words.length) return "?";
   return (words[0][0] + (words[1]?.[0] || "")).toUpperCase();
+}
+
+// Reconnu par son pseudo — voir l'avertissement dans config.js : une
+// convention entre collègues, pas un vrai verrou.
+function isAdmin() {
+  if (!ADMIN_NAME) return true;
+  return state.user.name.trim().toLowerCase() === ADMIN_NAME.trim().toLowerCase();
 }
 
 /* ----------------------------------------------------------- salle & url */
@@ -151,6 +158,14 @@ function render() {
   renderProgress();
   renderFeed();
   renderStandings();
+  renderAdminGate();
+}
+
+function renderAdminGate() {
+  const admin = isAdmin();
+  const btn = $("newgame");
+  btn.disabled = !admin;
+  btn.title = admin ? "" : `Seul${ADMIN_NAME ? " " + ADMIN_NAME : ""} peut lancer une nouvelle grille`;
 }
 
 function renderIdentity() {
@@ -518,6 +533,7 @@ function askName() {
       $("form-name").removeEventListener("submit", once);
       saveUser($("input-name").value || "Anonyme");
       renderIdentity();
+      renderAdminGate();
       conn?.setPresence(state.user);
       resolve();
     });
@@ -571,13 +587,7 @@ function wireUi() {
     state.fullHouse = false;
   });
 
-  $("newgame").addEventListener("click", () => {
-    if (!confirm("Tirer une nouvelle grille ? Elle remplacera celle de tout le monde.")) return;
-    conn.newGame(freshRoom());
-    conn.pushEvent({ type: "newgame", name: state.user.name, color: state.user.color });
-    state.celebrated.clear();
-    state.fullHouse = false;
-  });
+  $("newgame").addEventListener("click", () => requestNewGame());
 
   // --- modification d'une case
   $("cell-cancel").addEventListener("click", () => $("modal-cell").close());
@@ -601,12 +611,17 @@ function wireUi() {
 function openSettings() {
   $("input-room").value = state.roomId;
 
+  const admin = isAdmin();
   $("input-size").innerHTML = [3, 4, 5]
     .map((n) => {
       const checked = n === currentSize() ? "checked" : "";
-      return `<label><input type="radio" name="size" value="${n}" ${checked}> ${n}×${n}</label>`;
+      const disabled = admin ? "" : "disabled";
+      return `<label><input type="radio" name="size" value="${n}" ${checked} ${disabled}> ${n}×${n}</label>`;
     })
     .join("");
+  $("size-hint").textContent = admin
+    ? ""
+    : `Seul${ADMIN_NAME ? " " + ADMIN_NAME : ""} peut changer la taille (ça relance une nouvelle grille).`;
 
   const override = readConfigOverride();
   $("input-firebase").value = override ? JSON.stringify(override, null, 2) : "";
@@ -648,12 +663,21 @@ function applySettings() {
   if (reload) { location.reload(); return; }
 
   const size = Number($("input-size").querySelector("input:checked")?.value) || currentSize();
-  if (size !== currentSize()) {
-    conn.newGame(freshRoom({ size }));
-    conn.pushEvent({ type: "newgame", name: state.user.name, color: state.user.color });
-    state.celebrated.clear();
-    state.fullHouse = false;
+  if (size !== currentSize()) requestNewGame({ size });
+}
+
+// Seul l'admin peut lancer une nouvelle grille (bouton ou changement de
+// taille dans les réglages) : ça repart à zéro pour tout le monde.
+function requestNewGame(overrides) {
+  if (!isAdmin()) {
+    banner(`Seul${ADMIN_NAME ? " " + ADMIN_NAME : ""} peut lancer une nouvelle grille 🔒`, "info");
+    return;
   }
+  if (!confirm("Tirer une nouvelle grille ? Elle remplacera celle de tout le monde.")) return;
+  conn.newGame(freshRoom(overrides));
+  conn.pushEvent({ type: "newgame", name: state.user.name, color: state.user.color });
+  state.celebrated.clear();
+  state.fullHouse = false;
 }
 
 // Firebase donne un objet JavaScript (clés sans guillemets). On accepte les

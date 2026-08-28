@@ -142,6 +142,10 @@ h1, h2 { margin: 0; line-height: 1.2; }
 .btn--danger { color: var(--danger); }
 .btn--wide { width: 100%; }
 .btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--line); }
+
+.radios label:has(input:disabled) { opacity: .45; cursor: not-allowed; }
 
 /* --------------------------------------------------------------- grille */
 .grid {

@@ -35,3 +35,14 @@ export const DEFAULTS = {
   size: 5,        // 3, 4 ou 5 → grille de 3x3, 4x4 ou 5x5
   freeCell: true, // case centrale offerte (grilles impaires uniquement)
 };
+
+// Seule cette personne peut lancer une nouvelle grille (ou changer sa
+// taille) — reconnue par son pseudo, comparé sans tenir compte de la casse.
+// Laisse "" pour que tout le monde puisse le faire, comme avant.
+//
+// Ce n'est pas un vrai verrou de sécurité : le pseudo est déclaratif, donc
+// n'importe qui pourrait se faire passer pour "Rachid" en le tapant dans la
+// boîte de pseudo, ou contourner la restriction en lisant le code source.
+// C'est une convention entre collègues de bonne foi, pas une protection
+// contre quelqu'un qui chercherait vraiment à la casser.
+export const ADMIN_NAME = "Rachid";
