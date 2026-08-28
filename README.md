@@ -21,7 +21,7 @@ confettis quand quelqu'un fait une ligne.
 - **Journal en direct** de ce qui vient de se passer
 - **Cases modifiables** : écris vos propres phrases maison, elles se propagent à tout le monde
 - **Salles séparées** : `?salle=college-jean-moulin` — chaque établissement sa grille
-- **Détection des bingos** (lignes, colonnes, diagonales) et du carton plein
+- **Détection des bingos** (lignes, colonnes, diagonales) et du carton plein, avec un indicateur discret : combien de collègues ont eux aussi coché chaque case de la ligne gagnante (ex. « 4/5 confirmées »). Une information, jamais un blocage — impossible de vérifier qu'un événement s'est « vraiment » produit, seulement que plusieurs personnes l'ont remarqué
 - Grilles 3×3, 4×4 ou 5×5, mode sombre, pensé pour le téléphone
 - Aucune étape de compilation : c'est un site statique, du HTML et du JavaScript
 

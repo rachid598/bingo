@@ -132,6 +132,17 @@ function uniquePeople() {
   return [{ ...state.user }, ...others];
 }
 
+// Combien de collègues connectés ont eux aussi coché chacune de ces phrases
+// (indices du fond commun). Un simple indicateur, jamais un blocage : on ne
+// peut pas vérifier qu'un événement s'est « vraiment » produit dans la
+// salle, seulement que plusieurs personnes l'ont remarqué de leur côté.
+function corroboration(canonicalCells) {
+  const checks = state.room?.checks || {};
+  const others = uniquePeople().filter((p) => p.id !== state.user.id).map((p) => p.id);
+  const confirmed = canonicalCells.filter((c) => others.some((id) => Boolean(checks[id]?.[c]))).length;
+  return { confirmed, total: canonicalCells.length, hasWitnesses: others.length > 0 };
+}
+
 // La disposition visuelle de CE participant : mêmes phrases pour tout le
 // monde (currentLayout), mais rangées différemment sur chaque écran, comme
 // des cartons de loto. `perm[position visuelle] = case du fond commun`.
@@ -326,12 +337,20 @@ function describeEvent(event) {
   switch (event.type) {
     case "check": return `a coché${quote}`;
     case "uncheck": return `a décoché${quote}`;
-    case "bingo": return `a fait un <strong>BINGO</strong> 🎉`;
-    case "fullhouse": return `a rempli toute la grille 🏆`;
+    case "bingo": return `a fait un <strong>BINGO</strong> 🎉${confirmedSuffix(event)}`;
+    case "fullhouse": return `a rempli toute la grille 🏆${confirmedSuffix(event)}`;
     case "newgame": return `a lancé une nouvelle grille`;
     case "clear": return `a tout décoché`;
     default: return escapeHtml(event.type || "");
   }
+}
+
+// N'existe que si quelqu'un d'autre était connecté au moment du bingo (voir
+// corroboration()) : combien de ces cases un collègue au moins a aussi
+// cochées de son côté.
+function confirmedSuffix(event) {
+  if (!event.total) return "";
+  return ` (${event.confirmed}/${event.total} confirmée${event.confirmed > 1 ? "s" : ""})`;
 }
 
 function ago(timestamp) {
@@ -362,12 +381,19 @@ function announce(bingo) {
 
   if (!state.primed) return; // premier rendu : on ne fête pas l'existant
 
+  const perm = permutation();
+
   if (bingo.fullHouse && !state.fullHouse) {
     state.fullHouse = true;
-    banner("🏆 CARTON PLEIN ! Toute la grille y est passée.");
+    const total = currentSize() * currentSize();
+    const { confirmed, hasWitnesses } = corroboration(Array.from({ length: total }, (_, i) => perm[i]));
+    banner(`🏆 CARTON PLEIN ! Toute la grille y est passée.${hasWitnesses ? ` (${confirmed}/${total} confirmées)` : ""}`);
     confetti(3);
   } else if (fresh.length) {
-    banner(fresh.length > 1 ? `🎉 ${fresh.length} lignes complètes !` : `🎉 BINGO — ${fresh[0].label} complète !`);
+    const cells = [...new Set(fresh.flatMap((line) => line.cells.map((i) => perm[i])))];
+    const { confirmed, total, hasWitnesses } = corroboration(cells);
+    const detail = hasWitnesses ? ` (${confirmed}/${total} confirmée${confirmed > 1 ? "s" : ""} par au moins un collègue)` : "";
+    banner(fresh.length > 1 ? `🎉 ${fresh.length} lignes complètes !${detail}` : `🎉 BINGO — ${fresh[0].label} complète !${detail}`);
     confetti(1);
   }
 }
@@ -463,11 +489,23 @@ function onCellActivate(index) {
   const size = currentSize();
   const before = findBingos(size, isCheckedFor(perm, mine, free));
   const after = findBingos(size, (i) => i === index || isCheckedFor(perm, mine, free)(i));
-  if (after.lines.length > before.lines.length) {
-    conn.pushEvent({ type: "bingo", name: state.user.name, color: state.user.color });
+
+  const newLines = after.lines.filter((line) => !before.lines.some((b) => b.id === line.id));
+  if (newLines.length) {
+    const cells = [...new Set(newLines.flatMap((line) => line.cells.map((i) => perm[i])))];
+    const { confirmed, total, hasWitnesses } = corroboration(cells);
+    conn.pushEvent({
+      type: "bingo", name: state.user.name, color: state.user.color,
+      ...(hasWitnesses ? { confirmed, total } : {}),
+    });
   }
   if (after.fullHouse && !before.fullHouse) {
-    conn.pushEvent({ type: "fullhouse", name: state.user.name, color: state.user.color });
+    const cells = Array.from({ length: size * size }, (_, i) => perm[i]);
+    const { confirmed, total, hasWitnesses } = corroboration(cells);
+    conn.pushEvent({
+      type: "fullhouse", name: state.user.name, color: state.user.color,
+      ...(hasWitnesses ? { confirmed, total } : {}),
+    });
   }
 }
 
