@@ -1,0 +1,51 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        ".write": "auth != null && $roomId.length <= 48",
+
+        "meta": {
+          ".validate": "newData.hasChild('size')",
+          "size":     { ".validate": "newData.isNumber() && newData.val() >= 3 && newData.val() <= 5" },
+          "seed":     { ".validate": "newData.isNumber()" },
+          "freeCell": { ".validate": "newData.isBoolean()" },
+          "$autre":   { ".validate": true }
+        },
+
+        "layout": {
+          "$case": { ".validate": "newData.isString() && newData.val().length <= 140" }
+        },
+
+        "cells": {
+          "$case": {
+            ".validate": "newData.hasChild('name')",
+            "name":   { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "color":  { ".validate": "newData.isString() && newData.val().length <= 9" },
+            "$autre": { ".validate": true }
+          }
+        },
+
+        "presence": {
+          "$client": {
+            "name":   { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "$autre": { ".validate": true }
+          }
+        },
+
+        "events": {
+          "$event": {
+            "name":   { ".validate": "newData.isString() && newData.val().length <= 24" },
+            "text":   { ".validate": "newData.isString() && newData.val().length <= 160" },
+            "$autre": { ".validate": true }
+          }
+        },
+
+        "$autre": { ".validate": false }
+      }
+    }
+  }
+}

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Bingo collaboratif de la pré-rentrée : une grille partagée en temps réel entre collègues.">
+<meta name="theme-color" content="#1f6feb">
+<title>Bingo de la pré-rentrée</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+<noscript class="noscript">Ce bingo a besoin de JavaScript pour se synchroniser entre collègues.</noscript>
+
+<header class="topbar">
+  <div class="topbar__title">
+    <h1>Bingo de la pré-rentrée</h1>
+    <button type="button" class="room" id="room-button" title="Changer de salle">
+      <span aria-hidden="true">🏫</span><span id="room-name">…</span>
+    </button>
+  </div>
+
+  <div class="topbar__side">
+    <span class="status" id="status" data-state="connecting">Connexion…</span>
+    <ul class="presence" id="presence" aria-label="Collègues connectés"></ul>
+    <button type="button" class="chip chip--me" id="me-button" title="Changer de pseudo"></button>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="board" aria-labelledby="board-title">
+    <h2 class="visually-hidden" id="board-title">Grille de bingo</h2>
+
+    <div class="scoreline">
+      <div class="progress" role="img" id="progress-label" aria-label="Progression">
+        <div class="progress__bar"><span id="progress-fill"></span></div>
+        <span class="progress__text" id="progress-text">0 / 25</span>
+      </div>
+      <div class="toolbar">
+        <button type="button" class="btn" id="edit-toggle" aria-pressed="false">✏️ Modifier</button>
+        <button type="button" class="btn" id="share">🔗 Inviter</button>
+        <button type="button" class="btn btn--ghost" id="settings">⚙️</button>
+      </div>
+    </div>
+
+    <div class="grid" id="grid" role="group" aria-label="Cases du bingo"></div>
+
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <aside class="side">
+    <div class="panel">
+      <h2>Il se passe quoi ?</h2>
+      <ul class="feed" id="feed"><li class="feed__empty">Rien pour l'instant. La journée commence à peine…</li></ul>
+    </div>
+    <div class="panel panel--actions">
+      <button type="button" class="btn btn--wide" id="clear">↩️ Tout décocher</button>
+      <button type="button" class="btn btn--wide btn--danger" id="newgame">🎲 Nouvelle grille</button>
+    </div>
+  </aside>
+</main>
+
+<div class="banner" id="banner" hidden role="status"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+
+<!-- Choix du pseudo -->
+<dialog class="modal" id="modal-name">
+  <form method="dialog" id="form-name">
+    <h2>Comment on t'appelle ?</h2>
+    <p class="modal__lead">Ton prénom apparaît sur les cases que tu coches.</p>
+    <label class="field">
+      <span>Prénom ou pseudo</span>
+      <input type="text" id="input-name" maxlength="24" required autocomplete="given-name" placeholder="Alia">
+    </label>
+    <div class="modal__actions">
+      <button type="submit" class="btn btn--primary">C'est parti</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Modification d'une case -->
+<dialog class="modal" id="modal-cell">
+  <form method="dialog" id="form-cell">
+    <h2>Modifier la case</h2>
+    <label class="field">
+      <span>Texte de la case</span>
+      <textarea id="input-cell" rows="3" maxlength="140" required></textarea>
+    </label>
+    <div class="modal__actions">
+      <button type="button" class="btn" id="cell-random">🎲 Autre phrase</button>
+      <button type="button" class="btn btn--ghost" id="cell-cancel">Annuler</button>
+      <button type="submit" class="btn btn--primary">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Réglages -->
+<dialog class="modal modal--wide" id="modal-settings">
+  <form method="dialog" id="form-settings">
+    <h2>Réglages</h2>
+
+    <label class="field">
+      <span>Salle (chaque salle a sa propre grille)</span>
+      <input type="text" id="input-room" maxlength="48" placeholder="salle-des-profs">
+    </label>
+
+    <fieldset class="field">
+      <legend>Taille de la grille</legend>
+      <div class="radios" id="input-size"></div>
+      <small>Changer la taille crée une nouvelle grille pour tout le monde.</small>
+    </fieldset>
+
+    <details class="advanced" id="advanced">
+      <summary>Connexion à la base de données</summary>
+      <p class="modal__lead" id="backend-state"></p>
+      <label class="field">
+        <span>Configuration Firebase (le bloc <code>firebaseConfig</code>)</span>
+        <textarea id="input-firebase" rows="8" spellcheck="false" placeholder='{ "apiKey": "…", "authDomain": "…", "databaseURL": "https://…firebasedatabase.app", "projectId": "…", "appId": "…" }'></textarea>
+      </label>
+      <small>Colle ici la configuration donnée par Firebase, puis valide : la page se recharge en mode synchronisé. La marche à suivre complète est dans le README du projet.</small>
+    </details>
+
+    <div class="modal__actions">
+      <button type="button" class="btn btn--ghost" id="settings-cancel">Annuler</button>
+      <button type="submit" class="btn btn--primary">Appliquer</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
