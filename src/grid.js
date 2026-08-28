@@ -81,6 +81,36 @@ export function winningLines(size) {
   return lines;
 }
 
+// Une disposition personnelle par participant : les mêmes phrases pour tout
+// le monde, mais rangées différemment sur chaque grille — comme des cartons
+// de loto. La graine combine la graine de la partie et l'identifiant du
+// navigateur, donc la disposition de chacun reste stable d'une visite à
+// l'autre, mais change forcément d'une personne à l'autre.
+// Renvoie une table telle que table[position visuelle] = case du fond commun.
+export function personalPermutation(size, freeCell, roomSeed, clientId) {
+  const total = size * size;
+  const free = freeCell ? centerIndex(size) : -1;
+
+  let seed = (roomSeed ?? 0) >>> 0;
+  for (const char of String(clientId)) seed = (Math.imul(seed, 31) + char.codePointAt(0)) >>> 0;
+  const rng = makeRng(seed);
+
+  const movable = [];
+  for (let i = 0; i < total; i++) if (i !== free) movable.push(i);
+  for (let i = movable.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [movable[i], movable[j]] = [movable[j], movable[i]];
+  }
+
+  const table = new Array(total);
+  if (free >= 0) table[free] = free;
+  let cursor = 0;
+  for (let i = 0; i < total; i++) {
+    if (i !== free) table[i] = movable[cursor++];
+  }
+  return table;
+}
+
 // Renvoie les lignes complètes et l'ensemble des cases qui en font partie.
 export function findBingos(size, isChecked) {
   const lines = winningLines(size).filter((line) => line.cells.every(isChecked));

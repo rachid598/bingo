@@ -12,6 +12,7 @@ ligne est complète, tout le monde voit les confettis en même temps.
 ## Ce qu'il y a dedans
 
 - **86 phrases** prêtes à l'emploi, tirées au sort à chaque nouvelle grille
+- **Un vrai loto** : tout le monde a le même fond de phrases, mais chacun les voit rangées différemment sur sa grille — comme des cartons de loto. Cocher une phrase la coche partout, mais compléter une ligne reste personnel : chacun peut faire bingo à un moment différent
 - **Synchronisation temps réel** entre tous les téléphones et ordinateurs connectés
 - **Qui a coché quoi** : chaque case cochée porte les initiales et la couleur de son auteur, et se verrouille — personne ne peut la décocher ou piquer le crédit d'un collègue
 - **Journal en direct** de ce qui vient de se passer

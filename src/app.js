@@ -1,5 +1,5 @@
 import { DEFAULTS } from "./config.js";
-import { buildLayout, findBingos, centerIndex, randomSeed } from "./grid.js";
+import { buildLayout, findBingos, centerIndex, randomSeed, personalPermutation } from "./grid.js";
 import { PHRASES, FREE_CELL_TEXT } from "./phrases.js";
 import {
   chooseBackend, resolveFirebaseConfig, readConfigOverride,
@@ -109,6 +109,20 @@ function currentCells() {
   return state.room?.cells || {};
 }
 
+// La disposition visuelle de CE participant : mêmes phrases pour tout le
+// monde (currentLayout), mais rangées différemment sur chaque écran, comme
+// des cartons de loto. `perm[position visuelle] = case du fond commun`.
+let permCache = null;
+function permutation() {
+  const meta = state.room?.meta;
+  if (!meta) return [];
+  const key = `${meta.seed}:${meta.size}:${meta.freeCell}`;
+  if (permCache?.key !== key) {
+    permCache = { key, table: personalPermutation(meta.size, meta.freeCell, meta.seed, state.user.id) };
+  }
+  return permCache.table;
+}
+
 /* ---------------------------------------------------------------- rendu */
 
 const gridEl = $("grid");
@@ -148,7 +162,7 @@ function renderStatus() {
     $("hint").textContent =
       "Mode local : la grille reste sur cet appareil. Ouvre ⚙️ pour la partager avec les collègues.";
   } else if (state.editing) {
-    $("hint").textContent = "Mode modification : touche une case pour réécrire son texte.";
+    $("hint").textContent = "Mode modification : touche une case pour réécrire son texte — le changement peut apparaître ailleurs sur la grille des collègues, chacun a son propre mélange.";
   } else {
     $("hint").textContent = "Touche une case dès que ça arrive : elle se coche chez tout le monde et se verrouille.";
   }
@@ -188,11 +202,13 @@ function renderGrid() {
   }
 
   const cells = currentCells();
-  const bingo = findBingos(size, (i) => Boolean(cells[i]));
+  const perm = permutation();
+  const bingo = findBingos(size, (i) => Boolean(cells[perm[i]]));
 
   [...gridEl.children].forEach((button, index) => {
-    const marker = cells[index];
-    const text = layout[index] ?? "";
+    const canonical = perm[index];
+    const marker = cells[canonical];
+    const text = layout[canonical] ?? "";
     button.querySelector(".cell__text").textContent = text;
     button.dataset.checked = String(Boolean(marker));
     button.dataset.free = String(Boolean(marker?.free));
@@ -355,9 +371,11 @@ function tick() {
 function onCellActivate(index) {
   if (state.editing) return openCellEditor(index);
 
+  const perm = permutation();
+  const canonical = perm[index];
   const cells = currentCells();
-  const marker = cells[index];
-  const text = currentLayout()[index] || "";
+  const marker = cells[canonical];
+  const text = currentLayout()[canonical] || "";
 
   if (marker?.free) {
     banner("Celle-là est offerte 🎁", "info");
@@ -370,14 +388,15 @@ function onCellActivate(index) {
   }
 
   const mine = { name: state.user.name, color: state.user.color, uid: state.user.id, at: Date.now() };
-  conn.setCell(index, mine);
+  conn.setCell(canonical, mine);
   conn.pushEvent({ type: "check", name: state.user.name, color: state.user.color, text });
 
   // Un seul client doit annoncer le bingo dans le journal : celui qui vient de
-  // poser la case décisive. On simule donc l'état résultant de notre clic.
+  // poser la case décisive. On simule donc l'état résultant de notre clic, sur
+  // SA grille visuelle — chacun peut compléter une ligne à un moment différent.
   const size = currentSize();
-  const before = findBingos(size, (i) => Boolean(cells[i]));
-  const after = findBingos(size, (i) => i === index || Boolean(cells[i]));
+  const before = findBingos(size, (i) => Boolean(cells[perm[i]]));
+  const after = findBingos(size, (i) => i === index || Boolean(cells[perm[i]]));
   if (after.lines.length > before.lines.length) {
     conn.pushEvent({ type: "bingo", name: state.user.name, color: state.user.color });
   }
@@ -387,8 +406,9 @@ function onCellActivate(index) {
 }
 
 function openCellEditor(index) {
-  state.editingIndex = index;
-  $("input-cell").value = currentLayout()[index] || "";
+  const canonical = permutation()[index];
+  state.editingIndex = canonical;
+  $("input-cell").value = currentLayout()[canonical] || "";
   $("modal-cell").showModal();
 }
 
