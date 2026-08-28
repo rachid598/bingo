@@ -201,6 +201,13 @@ export function createFirebaseBackend(config, { useAnonymousAuth = true } = {}) 
           armPresence(user);
         },
 
+        // Pour effacer un doublon (même collègue connecté deux fois, vieil
+        // onglet resté ouvert…). Ne touche pas à ses cases cochées : s'il est
+        // toujours là, il réapparaîtra simplement à sa prochaine présence.
+        removePresence(clientId) {
+          return reported(remove(child(roomRef, `presence/${clientId}`)), "Retirer un participant");
+        },
+
         pushEvent(event) {
           return reported(push(child(roomRef, "events"), { ...event, at: serverTimestamp() }), "Journal");
         },

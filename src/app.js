@@ -273,12 +273,17 @@ function renderStandings() {
   el.innerHTML = rows.map((r) => {
     const pct = r.total ? Math.round((r.checked / r.total) * 100) : 0;
     const count = r.fullHouse ? "🏆 carton plein" : r.lines ? `🎉 ${r.lines} ligne${r.lines > 1 ? "s" : ""}` : `${r.checked}/${r.total}`;
+    // On ne peut pas se retirer soi-même : ça reviendrait à la prochaine
+    // présence. Utile surtout pour un doublon (vieil onglet, autre appareil).
+    const remove = r.id === state.user.id ? "" :
+      `<button type="button" class="standing__remove" data-remove="${escapeHtml(r.id)}" data-name="${escapeHtml(r.name || "ce participant")}" title="Retirer ${escapeHtml(r.name || "ce participant")} de la liste" aria-label="Retirer ${escapeHtml(r.name || "ce participant")} de la liste">✕</button>`;
     return `
       <li>
         <div class="standing__head">
           <span class="standing__dot" style="background:${r.color || "#888"}"></span>
           <span class="standing__name">${escapeHtml(r.name || "…")}${r.id === state.user.id ? " (toi)" : ""}</span>
           <span class="standing__count">${count}</span>
+          ${remove}
         </div>
         <div class="standing__bar"><span style="width:${pct}%;background:${r.color || "#888"}"></span></div>
       </li>`;
@@ -525,6 +530,16 @@ function wireUi() {
   $("me-button").addEventListener("click", () => askName());
   $("room-button").addEventListener("click", () => openSettings());
   $("settings").addEventListener("click", () => openSettings());
+
+  $("standings").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove]");
+    if (!button) return;
+    const id = button.dataset.remove;
+    const name = button.dataset.name || "ce participant";
+    if (confirm(`Retirer ${name} de la liste ? Sa progression est conservée : il réapparaîtra s'il rouvre le bingo.`)) {
+      conn.removePresence(id);
+    }
+  });
 
   $("edit-toggle").addEventListener("click", (event) => {
     state.editing = !state.editing;

@@ -129,6 +129,12 @@ export function createLocalBackend() {
           });
         },
 
+        removePresence(clientId) {
+          commit((r) => {
+            if (r.presence) delete r.presence[clientId];
+          });
+        },
+
         pushEvent(event) {
           commit((r) => {
             r.events = [...(r.events || []), { id: `${Date.now()}-${Math.random()}`, ...event }].slice(-30);
